@@ -25,6 +25,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <sys/dirent.h>
 #include <sys/exec.h>
 #include <sys/param.h>
@@ -251,6 +252,8 @@ int pm_exec(vir_bytes path, size_t path_len, vir_bytes frame, size_t frame_len,
    * switch after we find out what's inside the file.
    * It reads the start of the file.
    */
+  printf("Executando %s\n", fullpath);
+
   Get_read_vp(execi, fullpath, 1, 1, &resolve, fp);
 
   /* If this is a script (i.e. has a #!/interpreter line),
