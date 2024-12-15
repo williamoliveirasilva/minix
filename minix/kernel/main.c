@@ -327,6 +327,32 @@ void kmain(kinfo_t *local_cbi)
   NOT_REACHABLE;
 }
 
+static void print_banner(int banner_type) {
+  // 1 Announce banner
+  // 2 - Shutdown banner
+
+  if (banner_type == 1) {
+    printf("\033[32m"); // VERDE
+    printf("\n========================================");
+    printf("\033[0m\n");
+    printf("| Minix 3.4.0rc6 - SO - UNIFESP 2s2024 |\n");
+    printf("|         Projeto 1 - Equipe 4         |\n");
+    printf("\033[32m");
+    printf("========================================\n");
+    printf("\033[0m\n");
+  } else {
+    printf("\n");
+    printf("\033[32m");
+    printf("=================================================");
+    printf("\033[0m");
+    printf("|      ATE A PROXIMA - SO - UNIFESP 2s2024      |\n");
+    printf("|             Projeto 1 - Equipe 4              |\n");
+    printf("\033[32m");
+    printf("=================================================");
+    printf("\033[0m\n");
+  }
+}
+
 /*===========================================================================*
  *				announce				     *
  *===========================================================================*/
@@ -342,6 +368,7 @@ static void announce(void)
 #endif
       "Copyright 2016, Vrije Universiteit, Amsterdam, The Netherlands\n",
       OS_RELEASE);
+  print_banner(1);
   printf("MINIX is open source software, see http://www.minix3.org\n");
 }
 
@@ -358,6 +385,7 @@ void prepare_shutdown(const int how)
    * argument passes the shutdown status. 
    */
   printf("MINIX will now be shut down ...\n");
+  print_banner(2);
   set_kernel_timer(&shutdown_timer, get_monotonic() + system_hz,
       minix_shutdown, how);
 }
