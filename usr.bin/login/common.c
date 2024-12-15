@@ -129,6 +129,17 @@ rootterm(char *ttyn)
 
 static jmp_buf motdinterrupt;
 
+
+static void print_message() {
+  printf("\033[32m");
+  printf("\n=================================================");
+  printf("\033[0m\n");
+  printf("| OBRIGADO POR ESTAR AQUI - SO - UNIFESP 2s2024 |\n");
+  printf("|              Projeto 1 - Equipe 4             |\n");
+  printf("\033[32m");
+  printf("=================================================\n");
+  printf("\033[0m\n");
+
 void
 motd(const char *fname)
 {
@@ -142,6 +153,7 @@ motd(const char *fname)
 	if (setjmp(motdinterrupt) == 0)
 		while ((nchars = read(fd, tbuf, sizeof(tbuf))) > 0)
 			(void)write(fileno(stdout), tbuf, nchars);
+	print_message();
 	(void)signal(SIGINT, oldint);
 	(void)close(fd);
 }
