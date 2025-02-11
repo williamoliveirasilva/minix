@@ -1782,34 +1782,62 @@ void dequeue(struct proc *rp)
 /*===========================================================================*
  *				pick_proc				     * 
  *===========================================================================*/
-static struct proc * pick_proc(void)
-{
-/* Decide who to run now.  A new process is selected and returned.
- * When a billable process is selected, record it in 'bill_ptr', so that the 
- * clock task can tell who to bill for system time.
- *
- * This function always uses the run queues of the local cpu!
- */
-  register struct proc *rp;			/* process to run */
-  struct proc **rdy_head;
-  int q;				/* iterate over queues */
 
-  /* Check each of the scheduling queues for ready processes. The number of
-   * queues is defined in proc.h, and priorities are set in the task table.
-   * If there are no processes ready to run, return NULL.
-   */
-  rdy_head = get_cpulocal_var(run_q_head);
-  for (q=0; q < NR_SCHED_QUEUES; q++) {	
-	if(!(rp = rdy_head[q])) {
-		TRACE(VF_PICKPROC, printf("cpu %d queue %d empty\n", cpuid, q););
-		continue;
-	}
-	assert(proc_is_runnable(rp));
-	if (priv(rp)->s_flags & BILLABLE)	 	
-		get_cpulocal_var(bill_ptr) = rp; /* bill for system time */
-	return rp;
-  }
-  return NULL;
+/* Variável global para a semente do gerador pseudoaleatório */
+static unsigned int seed = 12345; // Valor inicial arbitrário
+
+/* Função para gerar números pseudoaleatórios */
+unsigned int random_number(void) {
+    /* Implementação básica de um Linear Congruential Generator */
+    seed = (1103515245 * seed + 12345) & 0x7fffffff; // Mantém resultado em 31 bits
+    return seed;
+}
+
+/* Função para gerar um número aleatório em um intervalo */
+unsigned int random_range(unsigned int min, unsigned int max) {
+    return min + (random_number() % (max - min + 1));
+}
+
+/*===========================================================================*
+ *				pick_proc				     * 
+ *===========================================================================*/
+static struct proc * pick_proc(void) {
+    /* Escolha o próximo processo usando o algoritmo de loteria */
+    register struct proc *rp;       /* Processo escolhido */
+    struct proc **rdy_head;
+    int q;                          /* Filas de prioridades */
+    int total_tickets = 0;
+    int ticket_sorteado;
+
+    rdy_head = get_cpulocal_var(run_q_head);
+
+    /* Calcula o total de tickets */
+    for (q = 0; q < NR_SCHED_QUEUES; q++) {
+        for (rp = rdy_head[q]; rp; rp = rp->p_nextready) {
+            total_tickets += (NR_SCHED_QUEUES - rp->p_priority);
+        }
+    }
+
+    if (total_tickets == 0) return NULL; /* Nenhum processo está pronto */
+
+    /* Sorteia um ticket */
+    ticket_sorteado = random_range(1, total_tickets);
+
+    /* Encontra o processo correspondente ao ticket sorteado */
+    for (q = 0; q < NR_SCHED_QUEUES; q++) {
+        for (rp = rdy_head[q]; rp; rp = rp->p_nextready) {
+            ticket_sorteado -= (NR_SCHED_QUEUES - rp->p_priority);
+            if (ticket_sorteado <= 0) {
+                /* Retorna o processo sorteado */
+                if (priv(rp)->s_flags & BILLABLE) {
+                    get_cpulocal_var(bill_ptr) = rp; /* Fatura o tempo do sistema */
+                }
+                return rp;
+            }
+        }
+    }
+
+    return NULL;
 }
 
 /*===========================================================================*
