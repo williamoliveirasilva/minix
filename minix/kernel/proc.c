@@ -1780,65 +1780,40 @@ void dequeue(struct proc *rp)
 }
 
 /*===========================================================================*
- *				pick_proc				     * 
+ *				pick proc				     * 
  *===========================================================================*/
 
-/* Variável global para a semente do gerador pseudoaleatório */
-static unsigned int seed = 12345; // Valor inicial arbitrário
 
-/* Função para gerar números pseudoaleatórios */
-unsigned int random_number(void) {
-    /* Implementação básica de um Linear Congruential Generator */
-    seed = (1103515245 * seed + 12345) & 0x7fffffff; // Mantém resultado em 31 bits
-    return seed;
-}
+static struct proc * pick_proc(void)
+{
+  struct proc **rdy_head;
+  struct proc *rp, *shortest_proc = NULL;
+  int q;
+  u64_t min_time = UINT64_MAX;
+  rdy_head = get_cpulocal_var(run_q_head);
 
-/* Função para gerar um número aleatório em um intervalo */
-unsigned int random_range(unsigned int min, unsigned int max) {
-    return min + (random_number() % (max - min + 1));
-}
-
-/*===========================================================================*
- *				pick_proc				     * 
- *===========================================================================*/
-static struct proc * pick_proc(void) {
-    /* Escolha o próximo processo usando o algoritmo de loteria */
-    register struct proc *rp;       /* Processo escolhido */
-    struct proc **rdy_head;
-    int q;                          /* Filas de prioridades */
-    int total_tickets = 0;
-    int ticket_sorteado;
-
-    rdy_head = get_cpulocal_var(run_q_head);
-
-    /* Calcula o total de tickets */
-    for (q = 0; q < NR_SCHED_QUEUES; q++) {
-        for (rp = rdy_head[q]; rp; rp = rp->p_nextready) {
-            total_tickets += (NR_SCHED_QUEUES - rp->p_priority);
-        }
+  for (q = 0; q < NR_SCHED_QUEUES; q++)
+  {  
+    for (rp = rdy_head[q]; rp; rp = rp->p_nextready)
+	{
+      if (rp->p_accounting.time_in_queue < min_time)
+	  {
+        min_time = rp->p_accounting.time_in_queue;
+        shortest_proc = rp;
+      }
     }
+  }
 
-    if (total_tickets == 0) return NULL; /* Nenhum processo está pronto */
+  if (!shortest_proc){return NULL;}
 
-    /* Sorteia um ticket */
-    ticket_sorteado = random_range(1, total_tickets);
+  assert(proc_is_runnable(shortest_proc));
 
-    /* Encontra o processo correspondente ao ticket sorteado */
-    for (q = 0; q < NR_SCHED_QUEUES; q++) {
-        for (rp = rdy_head[q]; rp; rp = rp->p_nextready) {
-            ticket_sorteado -= (NR_SCHED_QUEUES - rp->p_priority);
-            if (ticket_sorteado <= 0) {
-                /* Retorna o processo sorteado */
-                if (priv(rp)->s_flags & BILLABLE) {
-                    get_cpulocal_var(bill_ptr) = rp; /* Fatura o tempo do sistema */
-                }
-                return rp;
-            }
-        }
-    }
+  if (priv(shortest_proc)->s_flags & BILLABLE){get_cpulocal_var(bill_ptr) = shortest_proc;}
 
-    return NULL;
+  return shortest_proc;
 }
+
+
 
 /*===========================================================================*
  *				endpoint_lookup				     *
